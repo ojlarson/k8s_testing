@@ -49,20 +49,20 @@ hello-platform/
 - [x] Install Docker Desktop, `kubectl`, `kind`, `helm`, AWS CLI v2, Node.js (for CDK), and Python 3.12+.
 - [x] Create the GitHub repo and clone it. Add the layout above (empty folders need a `.gitkeep`).
 - [x] Write a `Makefile` with placeholder targets: `test`, `lint`, `build`, `kind-up`, `kind-down`, `deploy-local`. You'll fill them in over the next phases, and CI will call the same targets.
-- [ ] Add a trivial `.github/workflows/ci.yml` that checks out the repo and runs `echo hello`.
-- [ ] Turn on **branch protection** for `main` (require PRs and passing status checks).
-- [ ] Add `.github/dependabot.yml` for `github-actions` and `pip`.
-- [ ] Set an **AWS Budget alert** now, while you remember. Create a non-root IAM/SSO identity for CLI use rather than using root keys.
+- [x] Add a trivial `.github/workflows/ci.yml` that checks out the repo and runs `echo hello`.
+- [x] Turn on **branch protection** for `main` (require PRs and passing status checks).
+- [x] Add `.github/dependabot.yml` for `github-actions` and `pip`.
+- [x] Set an **AWS Budget alert** now, while you remember. Create a non-root IAM/SSO identity for CLI use rather than using root keys.
 
 **Pointers:**
 
-- [ ] GitHub docs: "About protected branches" and "Dependabot version updates".
-- [ ] AWS docs: "Creating a budget" and "IAM Identity Center" (SSO) for CLI auth.
+- [x] GitHub docs: "About protected branches" and "Dependabot version updates".
+- [x] AWS docs: "Creating a budget" and "IAM Identity Center" (SSO) for CLI auth.
 
 **Test checkpoint:**
 
-- [ ] `docker version`, `kubectl version --client`, `kind version`, `helm version`, `aws sts get-caller-identity` all work.
-- [ ] Open a PR that changes a file. The workflow runs and shows as a required check.
+- [x] `docker version`, `kubectl version --client`, `kind version`, `helm version`, `aws sts get-caller-identity` all work.
+- [x] Open a PR that changes a file. The workflow runs and shows as a required check.
 
 **Break it:** push directly to `main` and confirm branch protection stops you.
 
@@ -72,28 +72,28 @@ hello-platform/
 
 **Build:**
 
-- [ ] `app/main.py` with `GET /` (hello world) and `GET /healthz` (returns a simple status). The health endpoint matters for Kubernetes probes later.
-- [ ] `requirements.txt` (pin versions) and a `pytest` test using FastAPI's `TestClient`.
-- [ ] `Dockerfile`: slim Python base image, copy requirements before the code (layer caching), run as a **non-root user**, serve with uvicorn on `0.0.0.0:8000`.
-- [ ] `.dockerignore`.
-- [ ] Fill in the Makefile targets `test`, `lint` (use `ruff`), and `build` (tag with the short git SHA).
+- [x] `app/main.py` with `GET /` (hello world) and `GET /healthz` (returns a simple status). The health endpoint matters for Kubernetes probes later.
+- [x] `requirements.txt` (pin versions) and a `pytest` test using FastAPI's `TestClient`.
+- [x] `Dockerfile`: slim Python base image, copy requirements before the code (layer caching), run as a **non-root user**, serve with uvicorn on `0.0.0.0:8000`.
+- [x] `.dockerignore`.
+- [x] Fill in the Makefile targets `test`, `lint` (use `ruff`), and `build` (tag with the short git SHA).
 
 **Pointers:**
 
-- [ ] Search: "FastAPI testing TestClient", "Dockerfile best practices non-root user", "uvicorn host 0.0.0.0 in Docker".
-- [ ] Why `0.0.0.0`? Binding to `127.0.0.1` inside a container makes the port unreachable from outside.
+- [x] Search: "FastAPI testing TestClient", "Dockerfile best practices non-root user", "uvicorn host 0.0.0.0 in Docker".
+- [x] Why `0.0.0.0`? Binding to `127.0.0.1` inside a container makes the port unreachable from outside.
 - [ ] Think about graceful shutdown: what does uvicorn do on SIGTERM, and why does Kubernetes care?
 
 **Test checkpoint:**
 
-- [ ] `make test` passes.
-- [ ] `docker run -p 8000:8000 <image>` then `curl localhost:8000/` and `/healthz` both respond.
-- [ ] `docker exec <container> whoami` does not say `root`.
+- [x] `make test` passes.
+- [x] `docker run -p 8000:8000 <image>` then `curl localhost:8000/` and `/healthz` both respond.
+- [x] `docker exec <container> whoami` does not say `root`.
 
 **Break it:**
 
-- [ ] Bind to `127.0.0.1` and observe the failure from the host.
-- [ ] Remove the layer-caching order (copy everything first) and compare rebuild times after a code change.
+- [x] Bind to `127.0.0.1` and observe the failure from the host.
+- [x] Remove the layer-caching order (copy everything first) and compare rebuild times after a code change.
 
 **CI added:** `ruff`, `pytest`, and `docker build` on every PR. Add Trivy image scanning if you want a cheap win (search "trivy-action").
 
