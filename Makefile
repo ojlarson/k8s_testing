@@ -6,7 +6,7 @@ PY := $(VENV)/bin/python
 IMAGE := hello-api
 TAG := $(shell git rev-parse --short HEAD)
 
-.PHONY: help venv lint test build run ci
+.PHONY: help venv lint test build run smoke ci
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -30,5 +30,10 @@ build: ## build the docker image tagged with the git SHA
 
 run: ## run docker locally
 	docker run --rm -p 8000:8000 $(IMAGE):$(TAG)
+
+smoke: build ## run the image and hit /healthz
+	docker run -d --rm --name smoke -p 8000:8000 $(IMAGE):$(TAG)
+	sleep 3
+	curl -fsS localhost:8000/healthz; status=$$?; docker stop smoke; exit $$status
 
 ci: lint test build

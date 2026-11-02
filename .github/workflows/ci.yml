@@ -29,5 +29,5 @@ jobs:
       - name: Test
         run: make test
 
-      - name: Docker build
-        run: make build
+      - name: Docker build and smoke test
+        run: make smoke
