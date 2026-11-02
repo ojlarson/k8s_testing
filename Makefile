@@ -6,7 +6,7 @@ PY := $(VENV)/bin/python
 IMAGE := hello-api
 TAG := $(shell git rev-parse --short HEAD)
 
-.PHONY: help venv lint test build
+.PHONY: help venv lint test build run ci
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
