@@ -1,12 +1,13 @@
 name: continuous integration
 
 on:
+  pull_request: 
   push:
     branches:
       - main
 
 jobs:
-  build:
+  run-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repo
