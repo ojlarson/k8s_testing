@@ -6,7 +6,10 @@ PY := $(VENV)/bin/python
 IMAGE := hello-api
 TAG := $(shell git rev-parse --short HEAD)
 
-.PHONY: help venv lint test build run smoke ci
+KIND_CLUSTER := hello
+KIND_CONFIG := k8s/kind_config.yaml
+
+.PHONY: help venv lint test build run smoke ci kubeconform
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -25,6 +28,9 @@ lint: venv ## lint code with ruff
 test: venv ## run the test suite
 	$(PY) -m pytest
 
+show-tag: ## print the image tag this run would use
+	@echo $(IMAGE):$(TAG)
+
 build: ## build the docker image tagged with the git SHA
 	docker build -t $(IMAGE):$(TAG) .
 
@@ -37,3 +43,22 @@ smoke: build ## run the image and hit /healthz
 	curl -fsS localhost:8000/healthz; status=$$?; docker stop smoke; exit $$status
 
 ci: lint test build
+
+kind-up: ## create the kind cluster if it doesn't exist
+	@if kind get clusters | grep -qx "$(KIND_CLUSTER)"; then \
+		echo "kind cluster '$(KIND_CLUSTER)' already exists"; \
+	else \
+		kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 30s; \
+	fi
+
+kind-down: ## delete kind cluster
+	kind delete cluster --name $(KIND_CLUSTER)
+
+kube-deploy: kind-up build ## build, load, and deploy into the kind cluster
+	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
+	sed 's|image: $(IMAGE):.*|image: $(IMAGE):$(TAG)|' k8s/deployment.yaml \
+		| kubectl --context kind-$(KIND_CLUSTER) apply -f -
+	kubectl --context kind-$(KIND_CLUSTER) rollout status deployment/hello-api
+
+kubeconform: ## validate k8s manifests against schemas
+	kubeconform -strict -summary -kubernetes-version 1.37.0 k8s/deployment.yaml

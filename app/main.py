@@ -1,11 +1,15 @@
+import os
+
 from fastapi import FastAPI
 
 app = FastAPI()
 
+kube_pod_name = os.getenv("KUBE_POD_NAME", "test")
+
 
 @app.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": f"Hello World from {kube_pod_name}"}
 
 
 # For kubernetes
