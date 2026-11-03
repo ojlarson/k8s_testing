@@ -1,9 +1,11 @@
-from fastapi import FastAPI
 import os
+
+from fastapi import FastAPI
 
 app = FastAPI()
 
-kube_pod_name = os.getenv("KUBE_POD_NAME", 'test')
+kube_pod_name = os.getenv("KUBE_POD_NAME", "test")
+
 
 @app.get("/")
 async def root():
