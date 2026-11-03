@@ -9,7 +9,7 @@ TAG := $(shell git rev-parse --short HEAD)
 KIND_CLUSTER := hello
 KIND_CONFIG := k8s/kind_config.yaml
 
-.PHONY: help venv lint test build run smoke ci
+.PHONY: help venv lint test build run smoke ci kubeconform
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -27,6 +27,9 @@ lint: venv ## lint code with ruff
 
 test: venv ## run the test suite
 	$(PY) -m pytest
+
+show-tag: ## print the image tag this run would use
+	@echo $(IMAGE):$(TAG)
 
 build: ## build the docker image tagged with the git SHA
 	docker build -t $(IMAGE):$(TAG) .
@@ -57,5 +60,5 @@ kube-deploy: kind-up build ## build, load, and deploy into the kind cluster
 		| kubectl --context kind-$(KIND_CLUSTER) apply -f -
 	kubectl --context kind-$(KIND_CLUSTER) rollout status deployment/hello-api
 
-show-tag: ## print the image tag this run would use
-	@echo $(IMAGE):$(TAG)
+kubeconform: ## validate k8s manifests against schemas
+	kubeconform -strict -summary -kubernetes-version 1.37.0 k8s/deployment.yaml
