@@ -6,6 +6,9 @@ PY := $(VENV)/bin/python
 IMAGE := hello-api
 TAG := $(shell git rev-parse --short HEAD)
 
+KIND_CLUSTER := hello
+KIND_CONFIG := k8s/kind_config.yaml
+
 .PHONY: help venv lint test build run smoke ci
 
 help: ## Display this help message
@@ -37,3 +40,13 @@ smoke: build ## run the image and hit /healthz
 	curl -fsS localhost:8000/healthz; status=$$?; docker stop smoke; exit $$status
 
 ci: lint test build
+
+kind-up: ## create the kind cluster if it doesn't exist
+	@if kind get clusters | grep -qx "$(KIND_CLUSTER)"; then \
+		echo "kind cluster '$(KIND_CLUSTER)' already exists"; \
+	else \
+		kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 30s; \
+	fi
+
+kind-down: ## delete kind cluster
+	kind delete cluster --name $(KIND_CLUSTER)
