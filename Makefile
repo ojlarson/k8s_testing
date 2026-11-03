@@ -50,3 +50,12 @@ kind-up: ## create the kind cluster if it doesn't exist
 
 kind-down: ## delete kind cluster
 	kind delete cluster --name $(KIND_CLUSTER)
+
+kube-deploy: kind-up build ## build, load, and deploy into the kind cluster
+	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
+	sed 's|image: $(IMAGE):.*|image: $(IMAGE):$(TAG)|' k8s/deployment.yaml \
+		| kubectl --context kind-$(KIND_CLUSTER) apply -f -
+	kubectl --context kind-$(KIND_CLUSTER) rollout status deployment/hello-api
+
+show-tag: ## print the image tag this run would use
+	@echo $(IMAGE):$(TAG)
