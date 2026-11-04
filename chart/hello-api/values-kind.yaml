@@ -1,0 +1,14 @@
+image:
+  repository: hello-api
+  pullPolicy: IfNotPresent
+
+appEnv: local
+
+replicaCount: 2
+
+route:
+  hostname: hello.localhost
+  gatewayName: gateway
+
+gateway:
+  enabled: true

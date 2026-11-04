@@ -187,13 +187,13 @@ hello-platform/
 
 **Build:**
 
-- [ ] Scaffold with `helm create`, then delete the boilerplate you don't need.
+- [x] Scaffold with `helm create`, then delete the boilerplate you don't need.
 - [ ] Convert your manifests into templates. Parameterize: image repository and tag, replica count, resources, ingress host, env vars.
 - [ ] `values.yaml` holds the defaults. Add `values-dev.yaml`, `values-test.yaml`, and `values-prod.yaml` as thin overrides.
 - [ ] Add a **fake secret** (e.g. `API_KEY`): a Kubernetes Secret rendered by the chart from a value you pass at install time, mounted as an env var. Do not commit real values.
-- [ ] Add a `helm test` hook (a small pod that curls the service).
+- [x] Add a `helm test` hook (a small pod that curls the service).
 - [ ] Delete `k8s/` once the chart works. The chart is now the source of truth.
-- [ ] Makefile: update `deploy-local` to use `helm upgrade --install`.
+- [x] Makefile: update `deploy-local` to use `helm upgrade --install`.
 
 **Pointers:**
 

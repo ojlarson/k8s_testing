@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-api
+  name: {{ include "chart.fullname" . }}
 
 spec:
-  replicas: 2
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: hello-api
+      app: {{ include "chart.fullname" . }}
 
   template:
     metadata:
       labels:
-        app: hello-api
+        app: {{ include "chart.fullname" . }}
     spec:
       containers:
-        - name: hello-api
-          image: {{ .Values.helloImage }}
+        - name: {{ include "chart.fullname" . }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
