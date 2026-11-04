@@ -7,7 +7,7 @@ IMAGE := hello-api
 TAG := $(shell git rev-parse --short HEAD)
 
 KIND_CLUSTER := hello
-KIND_CONFIG := k8s/kind_config.yaml
+KIND_CONFIG := kind/kind_config.yaml
 
 KUBECTL := kubectl --context kind-$(KIND_CLUSTER)
 NGF_VERSION := 2.8.1
@@ -15,7 +15,7 @@ NGF_VERSION := 2.8.1
 .PHONY: help venv lint test build run smoke ci kubeconform
 
 help: ## Display this help message
-	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 $(VENV)/.installed: requirements.txt requirements-dev.txt
 	python -m venv $(VENV)
@@ -73,17 +73,22 @@ kubeconform: ## validate k8s manifests against schemas
 		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
 		k8s/*.yaml
 
-gateway-install: kind-up ## install Gateway API CRDs + NGINX Gateway Fabric (idempotent)
-	$(KUBECTL) kustomize "https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v$(NGF_VERSION)" \
-		| $(KUBECTL) apply -f -
-	helm upgrade --install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric \
-		--kube-context kind-$(KIND_CLUSTER) \
-		--version $(NGF_VERSION) \
-		--create-namespace -n nginx-gateway \
-		--set nginx.service.type=NodePort \
-		--set-json 'nginx.service.nodePorts=[{"port":31437,"listenerPort":80}]'
-	$(KUBECTL) wait --for=condition=available deployment --all -n nginx-gateway --timeout=120s
-
-smoke-kind: 
+gateway-install: kind-up ## install Gateway API CRDs + NGF
+	@if helm status ngf -n nginx-gateway --kube-context kind-$(KIND_CLUSTER) >/dev/null 2>&1 && [ -z "$(FORCE)" ]; then \
+		echo "NGF already installed (use FORCE=1 to reinstall/upgrade)"; \
+	else \
+		$(KUBECTL) kustomize "https://github.com/nginx/nginx-gateway-fabric/config/crd/gateway-api/standard?ref=v$(NGF_VERSION)" | $(KUBECTL) apply -f - && \
+		helm upgrade --install ngf oci://ghcr.io/nginx/charts/nginx-gateway-fabric \
+			--kube-context kind-$(KIND_CLUSTER) --version $(NGF_VERSION) \
+			--create-namespace -n nginx-gateway \
+			--set nginx.service.type=NodePort \
+			--set-json 'nginx.service.nodePorts=[{"port":31437,"listenerPort":80}]' && \
+		$(KUBECTL) wait --for=condition=available deployment --all -n nginx-gateway --timeout=120s; \
+	fi
+smoke-kind: ## test deployed cluster with curl
 	curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors \
 	-H "Host: hello.localhost" http://localhost/healthz | grep -q '"status":"ok"'
+
+helm-deploy: gateway-install build ## deploy into kind with helm
+	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
+	helm upgrade --install hello-api ./chart/hello-api --set helloImage=$(IMAGE):$(TAG)
