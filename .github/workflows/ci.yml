@@ -42,9 +42,9 @@ jobs:
       - name: Create KinD Cluster
         uses: helm/kind-action@v1.12.0
         with:
-          cluster_name: "helm-test-cluster"
+          cluster_name: "hello"
+          config: k8s/kind_config.yaml
 
-      # Verify the cluster is accessible
-      - name: Test cluster connection
+      - name: deploy into cluster
         run: |
-          curl hello.localhost
+          make kube-deploy
