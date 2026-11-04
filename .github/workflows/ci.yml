@@ -37,3 +37,14 @@ jobs:
 
       - name: Validate k8s Deployment
         run: make kubeconform
+
+      # Sets up the local KinD cluster
+      - name: Create KinD Cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: "helm-test-cluster"
+
+      # Verify the cluster is accessible
+      - name: Test cluster connection
+        run: |
+          curl hello.localhost

@@ -18,6 +18,9 @@ spec:
         - name: hello-api
           image: hello-api:4587052
           imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: hello-config
           env:
             - name: KUBE_POD_NAME
               valueFrom:
