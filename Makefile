@@ -84,3 +84,6 @@ gateway-install: kind-up ## install Gateway API CRDs + NGINX Gateway Fabric (ide
 		--set-json 'nginx.service.nodePorts=[{"port":31437,"listenerPort":80}]'
 	$(KUBECTL) wait --for=condition=available deployment --all -n nginx-gateway --timeout=120s
 
+smoke-kind: 
+	curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors \
+	-H "Host: hello.localhost" http://localhost/healthz | grep -q '"status":"ok"'
