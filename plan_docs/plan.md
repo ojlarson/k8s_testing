@@ -105,10 +105,10 @@ hello-platform/
 
 **Build:**
 
-- [ ] A kind cluster config file (you'll extend it in Phase 3). Pin the node image version.
-- [ ] `k8s/deployment.yaml`: 2 replicas, resource requests and limits, readiness and liveness probes pointed at `/healthz`, and `securityContext` hardening (non-root, `readOnlyRootFilesystem` if the app tolerates it).
-- [ ] `k8s/service.yaml`: type ClusterIP.
-- [ ] Makefile targets: `kind-up` (create cluster), `deploy-local` (build, `kind load docker-image`, `kubectl apply`), `kind-down`.
+- [x] A kind cluster config file (you'll extend it in Phase 3). Pin the node image version.
+- [x] `k8s/deployment.yaml`: 2 replicas, resource requests and limits, readiness and liveness probes pointed at `/healthz`, and `securityContext` hardening (non-root, `readOnlyRootFilesystem` if the app tolerates it).
+- [x] `k8s/service.yaml`: type ClusterIP.
+- [x] Makefile targets: `kind-up` (create cluster), `deploy-local` (build, `kind load docker-image`, `kubectl apply`), `kind-down`.
 
 **Pointers:**
 
@@ -118,44 +118,68 @@ hello-platform/
 
 **Test checkpoint:**
 
-- [ ] Both pods reach `Ready`.
-- [ ] `kubectl port-forward svc/hello-api 8080:80` then `curl localhost:8080/`.
-- [ ] Delete a pod and watch the Deployment replace it.
+- [x] Both pods reach `Ready`.
+- [x] `kubectl port-forward svc/hello-api 8080:80` then `curl localhost:8080/`.
+- [x] Delete a pod and watch the Deployment replace it.
 
 **Break it (do all four, and diagnose each with only `kubectl`):**
 
 - [ ] `ImagePullBackOff`: use a wrong image tag.
 - [ ] `CrashLoopBackOff`: use a bad container command.
 - [ ] Failing readiness probe: point it at a path that 404s.
-- [ ] `OOMKilled`: set a tiny memory limit and generate load or allocate memory.
+- [x] `OOMKilled`: set a tiny memory limit and generate load or allocate memory.
 
 **CI added:** validate manifests with `kubeconform` (or `kubectl --dry-run=client`).
 
-## Phase 3: Ingress with NGINX (1 evening)
+# Phase 3: Gateway API (1-2 evenings)
 
-**Goal:** route HTTP traffic into the cluster the way you will on AWS.
+**Goal:** route HTTP traffic into the cluster through a real front door, the way you will on AWS. Ingress-nginx is retired, so you'll use the Kubernetes Gateway API, the successor to Ingress.
+
+**Concepts to learn first:**
+
+- A **controller** is a pod (or pods) that watches the Kubernetes API and configures a proxy or load balancer to match your YAML. Without one installed, Gateway objects do nothing.
+- **GatewayClass** names which controller handles your gateways. **Gateway** defines the listener (ports, protocols, hostnames). **HTTPRoute** holds the routing rules that send traffic to your Service.
+- Gateway API isn't built into Kubernetes, so you install its **CRDs** separately from the controller. Pin both versions, and make sure they're compatible.
 
 **Build:**
 
-- [ ] Recreate the kind cluster with `extraPortMappings` for 80/443 and the `ingress-ready` node label.
-- [ ] Install **ingress-nginx** (the project's kind-specific install docs are the right starting point; use `helm` if you prefer, since you'll use Helm later anyway).
-- [ ] `k8s/ingress.yaml`: route `hello.localhost` to your Service.
-- [ ] Add a ConfigMap-driven env var such as `APP_ENV` and surface it in the hello response. You'll reuse this idea for dev/test/prod.
+- [x] Pick one controller that also runs on EKS: **Envoy Gateway**, **Traefik**, or **NGINX Gateway Fabric**. Choose the one with the clearest kind quickstart, and stick with it through Phase 6.
+- [x] Install the Gateway API CRDs (pinned version), then the controller (use `helm` if the docs offer it, since you'll use Helm later anyway).
+- [x] Solve the kind `LoadBalancer` problem. kind has no cloud load balancer, so the Gateway's address may stay `<pending>`. Look into `cloud-provider-kind` or MetalLB, or use `kubectl port-forward` to the controller's Service as a fallback. Follow your controller's kind docs to see whether `extraPortMappings` on the cluster config are needed too.
+- [x] `k8s/gateway.yaml`: a `Gateway` with an HTTP listener on port 80, referencing the controller's `GatewayClass`.
+- [x] `k8s/httproute.yaml`: an `HTTPRoute` that attaches to your Gateway (`parentRefs`) and routes `hello.localhost` to your Service (`backendRefs`).
+- [x] Add a ConfigMap-driven env var such as `APP_ENV` and surface it in the hello response. You'll reuse this idea for dev/test/prod.
 
 **Pointers:**
 
-- [ ] Search: "ingress-nginx kind deploy", "ingressClassName", "Kubernetes ConfigMap env var envFrom".
-- [ ] Read the ingress controller's logs to see requests arrive.
+- [ ] Search: "gateway api getting started", "<your controller> kind quickstart", "HTTPRoute parentRefs backendRefs", "cloud-provider-kind", "Kubernetes ConfigMap env var envFrom".
+- [ ] Use `kubectl explain httproute.spec` (once the CRDs are installed) and the docs at gateway-api.sigs.k8s.io.
+- [ ] Run `kubectl get gatewayclass,gateway,httproute -A` and `kubectl describe` on each. Gateway API reports problems in status conditions (`Accepted`, `Programmed`, `ResolvedRefs`), so read them first when something doesn't work.
+- [ ] Read the controller's pod logs to see config updates and requests arrive.
 
 **Test checkpoint:**
 
-- [ ] `curl http://hello.localhost/` works through the controller.
-- [ ] Add a second path (e.g. `/api`) to see path-based routing, then remove it.
-- [ ] Change the ConfigMap value, restart the pods, and see the response change. Work out *why* the restart was needed.
+- [x] The GatewayClass shows `Accepted`, the Gateway shows `Programmed` with an address, and the HTTPRoute shows `Accepted` and `ResolvedRefs`.
+- [x] `curl http://hello.localhost/` works through the Gateway, with no `port-forward` to your app. (If you're using the port-forward fallback, it goes to the controller, not to your app.)
+- [x] Run the request in a loop and confirm responses come from both pods, since the Gateway balances per request.
+- [x] Add a second path match (e.g. `/api`) to see path-based routing, then remove it.
+- [x] Change the ConfigMap value, restart the pods, and see the response change. Work out *why* the restart was needed.
 
-**Break it:** misspell the `ingressClassName` or the Service name, and use the controller logs and `describe ingress` to find it.
+**Break it:**
 
-**CI added (optional):** a kind-based smoke test job using the `helm/kind-action`. You'll make this properly valuable in Phase 4.
+- [x] Misspell the Service name in `backendRefs` and read the HTTPRoute's `ResolvedRefs` condition.
+- [x] Point `parentRefs` at a Gateway that doesn't exist, or use the wrong `gatewayClassName`, and find the problem using `describe` and the controller logs.
+- [x] Scale the app to 0 replicas and see what the Gateway returns (and what the controller logs).
+
+**CI added (optional):**
+
+- [ ] A kind-based smoke test job using `helm/kind-action`: install the CRDs and controller, apply your manifests, and curl through the Gateway. You'll make this properly valuable in Phase 4.
+- [ ] Extend `kubeconform` to cover the new files. Gateway API resources aren't in the built-in schemas, so look at its `-schema-location` option for CRD schemas, or temporarily use `-ignore-missing-schemas` and note it in `LEARNING.md`.
+
+**Notes for later phases:**
+
+- **Phase 4:** the chart gets an `HTTPRoute` template with the hostname and parent Gateway as values. Decide whether the Gateway belongs to the chart or is shared cluster infrastructure installed separately (usually the latter).
+- **Phase 5b:** install the same controller on EKS. The AWS Load Balancer Controller's Gateway API support is a stretch option, since it provisions a native ALB but adds IAM setup. Your HTTPRoutes stay the same either way.
 
 ## Phase 4: Helm chart (2–3 evenings)
 

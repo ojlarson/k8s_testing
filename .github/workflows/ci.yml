@@ -37,3 +37,11 @@ jobs:
 
       - name: Validate k8s Deployment
         run: make kubeconform
+
+      - name: deploy into cluster
+        run: |
+          make kube-deploy
+
+      - name: validate cluster
+        run: |
+          make smoke-kind
