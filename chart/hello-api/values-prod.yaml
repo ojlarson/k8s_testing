@@ -1,0 +1,3 @@
+appEnv: prod
+route:
+  hostname: prod.hello.localhost

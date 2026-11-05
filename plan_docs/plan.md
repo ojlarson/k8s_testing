@@ -174,7 +174,7 @@ hello-platform/
 **CI added (optional):**
 
 - [ ] A kind-based smoke test job using `helm/kind-action`: install the CRDs and controller, apply your manifests, and curl through the Gateway. You'll make this properly valuable in Phase 4.
-- [ ] Extend `kubeconform` to cover the new files. Gateway API resources aren't in the built-in schemas, so look at its `-schema-location` option for CRD schemas, or temporarily use `-ignore-missing-schemas` and note it in `LEARNING.md`.
+- [x] Extend `kubeconform` to cover the new files. Gateway API resources aren't in the built-in schemas, so look at its `-schema-location` option for CRD schemas, or temporarily use `-ignore-missing-schemas` and note it in `LEARNING.md`.
 
 **Notes for later phases:**
 
@@ -188,11 +188,11 @@ hello-platform/
 **Build:**
 
 - [x] Scaffold with `helm create`, then delete the boilerplate you don't need.
-- [ ] Convert your manifests into templates. Parameterize: image repository and tag, replica count, resources, ingress host, env vars.
-- [ ] `values.yaml` holds the defaults. Add `values-dev.yaml`, `values-test.yaml`, and `values-prod.yaml` as thin overrides.
-- [ ] Add a **fake secret** (e.g. `API_KEY`): a Kubernetes Secret rendered by the chart from a value you pass at install time, mounted as an env var. Do not commit real values.
+- [x] Convert your manifests into templates. Parameterize: image repository and tag, replica count, resources, ingress host, env vars.
+- [x] `values.yaml` holds the defaults. Add `values-dev.yaml`, `values-test.yaml`, and `values-prod.yaml` as thin overrides.
+- [x] Add a **fake secret** (e.g. `API_KEY`): a Kubernetes Secret rendered by the chart from a value you pass at install time, mounted as an env var. Do not commit real values.
 - [x] Add a `helm test` hook (a small pod that curls the service).
-- [ ] Delete `k8s/` once the chart works. The chart is now the source of truth.
+- [x] Delete `k8s/` once the chart works. The chart is now the source of truth.
 - [x] Makefile: update `deploy-local` to use `helm upgrade --install`.
 
 **Pointers:**
@@ -205,8 +205,8 @@ hello-platform/
 
 - [ ] `helm lint chart/hello-api` is clean.
 - [ ] `helm template` with each values file; read the output and confirm each differs as expected.
-- [ ] Install into `dev` and `test` namespaces on kind simultaneously with different values.
-- [ ] `helm upgrade` with a changed value, then `helm rollback`, and read `helm history`.
+- [x] Install into `dev` and `test` namespaces on kind simultaneously with different values.
+- [x] `helm upgrade` with a changed value, then `helm rollback`, and read `helm history`.
 - [ ] `helm test <release>` passes.
 
 **Break it:**

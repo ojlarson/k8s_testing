@@ -15,6 +15,9 @@ NGF_VERSION := 2.8.1
 NGF_VALUES := kind/ngf-values.yaml
 NGF_NAMESPACE := nginx-gateway
 
+API_KEY ?= fake-local-key
+ENV ?= test
+
 .PHONY: help venv lint test build run smoke ci kubeconform
 
 help: ## Display this help message
@@ -75,19 +78,23 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 	$(KUBECTL) wait --for=condition=Programmed gateway/gateway --timeout=60s
 
 smoke-kind: ## run helm tests against the kind release
-	helm test hello-api --kube-context kind-$(KIND_CLUSTER) --logs
+	helm test hello-api -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
 
-API_KEY ?= fake-local-key
-helm-deploy: gateway-install build ## deploy into kind with helm
+helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
-	helm upgrade --install hello-api ./chart/hello-api \
+	helm upgrade --install hello-api chart/hello-api \
 		--kube-context kind-$(KIND_CLUSTER) \
+		-n $(ENV) --create-namespace \
 		-f chart/hello-api/values-kind.yaml \
+		-f chart/hello-api/values-$(ENV).yaml \
 		--set image.tag=$(TAG) \
 		--set apiKey=$(API_KEY)
 
 helm-check: ## use kubeconform on helm templates
-	helm template hello-api chart/hello-api -f chart/hello-api/values-kind.yaml --set apiKey=test123 \
+	helm template hello-api -n $(ENV) chart/hello-api \
+	-f chart/hello-api/values-kind.yaml \
+	-f chart/hello-api/values-$(ENV).yaml \
+	--set apiKey=test123 \
 	| kubeconform -strict -summary \
 		-schema-location default \
 		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \

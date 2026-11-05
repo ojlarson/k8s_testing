@@ -1,0 +1,5 @@
+# values-test.yaml
+appEnv: test
+route:
+  hostname: test.hello.localhost
+replicaCount: 1

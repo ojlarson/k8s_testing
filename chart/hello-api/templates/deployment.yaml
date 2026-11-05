@@ -39,11 +39,11 @@ spec:
                   fieldPath: metadata.uid
           resources:
             limits:
-              cpu: "500m"
-              memory: "128Mi"
+              cpu: {{ .Values.resources.limits.cpu | quote }}
+              memory: {{ .Values.resources.limits.memory | quote }}
             requests:
-              cpu: "50m"
-              memory: "64Mi"
+              cpu: {{ .Values.resources.requests.cpu | quote }}
+              memory: {{ .Values.resources.requests.memory | quote }}
           livenessProbe:
             httpGet:
               path: /healthz
