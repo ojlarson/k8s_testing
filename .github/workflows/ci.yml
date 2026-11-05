@@ -32,15 +32,9 @@ jobs:
       - name: Docker build and smoke test
         run: make smoke
 
-      - name: Set up Kubeconform
-        uses: bmuschko/setup-kubeconform@v1
-
-      - name: Validate k8s Deployment
-        run: make kubeconform
-
       - name: deploy into cluster
         run: |
-          make kube-deploy
+          make helm-deploy
 
       - name: validate cluster
         run: |
