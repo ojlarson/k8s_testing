@@ -60,22 +60,6 @@ kind-up: ## create the kind cluster if it doesn't exist
 kind-down: ## delete kind cluster
 	kind delete cluster --name $(KIND_CLUSTER)
 
-kube-deploy: gateway-install build ## build, load, and deploy everything into kind
-	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
-	$(KUBECTL) apply -f k8s/gateway.yaml
-	$(KUBECTL) apply -f k8s/config_map.yaml
-	sed 's|image: $(IMAGE):.*|image: $(IMAGE):$(TAG)|' k8s/deployment.yaml | $(KUBECTL) apply -f -
-	$(KUBECTL) rollout status deployment/hello-api
-	$(KUBECTL) apply -f k8s/routes.yaml
-
-kubeconform: ## validate k8s manifests against schemas
-	kubeconform -strict -summary \
-		-kubernetes-version 1.37.0 \
-		-skip Cluster \
-		-schema-location default \
-		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
-		k8s/*.yaml
-
 gateway-install: kind-up ## install Gateway API CRDs + NGF
 	@if helm status ngf -n $(NGF_NAMESPACE) --kube-context kind-$(KIND_CLUSTER) >/dev/null 2>&1 && [ -z "$(FORCE)" ]; then \
 		echo "NGF already installed (use FORCE=1 to reinstall/upgrade)"; \
