@@ -2,10 +2,12 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "chart.fullname" . }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
 
 spec:
   selector:
-    app: {{ include "chart.fullname" . }}
+    {{- include "chart.selectorLabels" . | nindent 4 }}
   ports:
     - port: 80
       targetPort: http

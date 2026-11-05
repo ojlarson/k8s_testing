@@ -77,6 +77,7 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 smoke-kind: ## run helm tests against the kind release
 	helm test hello-api --kube-context kind-$(KIND_CLUSTER) --logs
 
+API_KEY ?= fake-local-key
 helm-deploy: gateway-install build ## deploy into kind with helm
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
 	helm upgrade --install hello-api ./chart/hello-api \
