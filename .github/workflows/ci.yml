@@ -45,3 +45,12 @@ jobs:
       - name: validate cluster
         run: |
           make smoke-kind
+
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods,svc,endpoints -A
+          kubectl get gateway,httproute -A
+          kubectl describe httproute
+          kubectl describe gateway
+          kubectl logs -n default deploy/gateway-nginx --tail=50 || true
