@@ -82,4 +82,12 @@ helm-deploy: gateway-install build ## deploy into kind with helm
 	helm upgrade --install hello-api ./chart/hello-api \
 		--kube-context kind-$(KIND_CLUSTER) \
 		-f chart/hello-api/values-kind.yaml \
-		--set image.tag=$(TAG)
+		--set image.tag=$(TAG) \
+		--set apiKey=$(API_KEY)
+
+helm-check: ## use kubeconform on helm templates
+	helm template hello-api chart/hello-api -f chart/hello-api/values-kind.yaml --set apiKey=test123 \
+	| kubeconform -strict -summary \
+		-schema-location default \
+		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
+		-
