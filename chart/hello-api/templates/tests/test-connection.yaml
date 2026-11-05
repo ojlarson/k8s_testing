@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "chart.fullname" . }}-test-connection"
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: curl
+      image: curlimages/curl:8.5.0
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          URL="http://{{ include "chart.fullname" . }}:{{ .Values.service.port }}/healthz"
+          echo "Checking $URL"
+          curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors "$URL" | grep -q '"status":"ok"'
+          echo "Health check passed"

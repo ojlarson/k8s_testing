@@ -9,3 +9,6 @@ spec:
     port: 80
     protocol: HTTP
     hostname: "*.localhost"
+    allowedRoutes:
+      namespaces:
+        from: All
