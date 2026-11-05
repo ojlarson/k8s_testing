@@ -91,9 +91,8 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 	$(KUBECTL) wait --for=condition=Programmed gateway/gateway --timeout=60s
 
 smoke-kind: ## test deployed cluster with curl
-	curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors \
-	-H "Host: hello.localhost" http://localhost/healthz | grep -q '"status":"ok"'
-
+	helm test hello-api
+	
 helm-deploy: gateway-install build ## deploy into kind with helm
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
 	helm upgrade --install hello-api ./chart/hello-api \
