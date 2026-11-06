@@ -18,7 +18,7 @@ NGF_NAMESPACE := nginx-gateway
 API_KEY ?= fake-local-key
 ENV ?= test
 
-.PHONY: help venv lint test build run smoke ci kubeconform
+.PHONY: help venv lint test build run smoke ci kind-up kind-down gateway-install helm-deploy smoke-kind helm-check show-tag
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -46,7 +46,7 @@ build: ## build the docker image tagged with the git SHA
 run: ## run docker locally
 	docker run --rm -p 8000:8000 $(IMAGE):$(TAG)
 
-smoke: build ## run the image and hit /healthz
+smoke-image: build ## run the image and hit /healthz
 	docker run -d --rm --name smoke -p 8000:8000 $(IMAGE):$(TAG)
 	sleep 3
 	curl -fsS localhost:8000/healthz; status=$$?; docker stop smoke; exit $$status
@@ -57,7 +57,7 @@ kind-up: ## create the kind cluster if it doesn't exist
 	@if kind get clusters | grep -qx "$(KIND_CLUSTER)"; then \
 		echo "kind cluster '$(KIND_CLUSTER)' already exists"; \
 	else \
-		kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 30s; \
+		kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 60s; \
 	fi
 
 kind-down: ## delete kind cluster
@@ -79,10 +79,12 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 
 smoke-kind: ## run helm tests against the kind release
 	helm test hello-api -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
+	curl -s -H "Host: $(ENV).hello.localhost" http://localhost/
 
 helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
 	helm upgrade --install hello-api chart/hello-api \
+		--wait --timeout 120s \
 		--kube-context kind-$(KIND_CLUSTER) \
 		-n $(ENV) --create-namespace \
 		-f chart/hello-api/values-kind.yaml \
@@ -90,7 +92,8 @@ helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 		--set image.tag=$(TAG) \
 		--set apiKey=$(API_KEY)
 
-helm-check: ## use kubeconform on helm templates
+helm-check: ## helm lint and use kubeconform on helm templates
+	helm lint chart/hello-api --set apiKey=$(API_KEY)
 	helm template hello-api -n $(ENV) chart/hello-api \
 	-f chart/hello-api/values-kind.yaml \
 	-f chart/hello-api/values-$(ENV).yaml \
@@ -99,3 +102,11 @@ helm-check: ## use kubeconform on helm templates
 		-schema-location default \
 		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
 		-
+
+smoke-gateway: ## curl through the Gateway: make smoke-gateway ENV=dev
+	$(KUBECTL) wait httproute/hello-api -n $(ENV) --timeout=60s \
+		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
+	$(KUBECTL) wait httproute/hello-api -n $(ENV) --timeout=60s \
+		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}'=True
+	curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors \
+		-H "Host: $(ENV).hello.localhost" http://localhost/healthz
