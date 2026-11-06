@@ -29,22 +29,31 @@ jobs:
       - name: Test
         run: make test
 
+      - name: Set up Kubeconform
+        uses: bmuschko/setup-kubeconform@v1
+        
+      - name: Helm Lint and Kubeconform
+        run: make helm-check
+
       - name: Docker build and smoke test
-        run: make smoke
+        run: make smoke-image
 
       - name: deploy into cluster
-        run: |
-          make helm-deploy
+        run: make helm-deploy
 
       - name: validate cluster
-        run: |
-          make smoke-kind
+        run: make smoke-kind
+      
+      - name: Validate Gateway
+        run: make smoke-gateway
 
       - name: Diagnostics
         if: failure()
         run: |
           kubectl get pods,svc,endpoints -A
           kubectl get gateway,httproute -A
-          kubectl describe httproute
-          kubectl describe gateway
+          kubectl describe httproute -A
+          kubectl describe gateway -A
+          helm list -A
           kubectl logs -n default deploy/gateway-nginx --tail=50 || true
+          kubectl logs -n test -l app.kubernetes.io/name=hello-api --tail=50 || true
