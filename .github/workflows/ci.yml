@@ -43,5 +43,5 @@ jobs:
           kubectl describe gateway -A
           helm list -A
           kubectl logs -n default deploy/gateway-nginx --tail=50 || true
-          kubectl logs -n test -l app.kubernetes.io/name=hello-api --tail=50 || true
+          kubectl logs -n test -l app.kubernetes.io/name=-azimuth --tail=50 || true
           make show-tag

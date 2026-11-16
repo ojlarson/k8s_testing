@@ -1,12 +1,14 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
+APP := azimuth
+
 VENV := .venv
 PY := $(VENV)/bin/python
-IMAGE := hello-api
+IMAGE := azimuth
 TAG := $(shell git rev-parse --short HEAD)
 
-KIND_CLUSTER := hello
+KIND_CLUSTER := azimuth
 KIND_CONFIG := kind/kind_config.yaml
 
 KUBECTL := kubectl --context kind-$(KIND_CLUSTER)
@@ -83,25 +85,25 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 	$(KUBECTL) wait --for=condition=Programmed gateway/gateway --timeout=60s
 
 smoke-kind: ## run helm tests against the kind release
-	helm test hello-api -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
-	curl -s -H "Host: $(ENV).hello.localhost" http://localhost/healthz
+	helm test $(APP) -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
+	curl -s -H "Host: $(ENV).localhost" http://localhost/healthz
 
 helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
-	helm upgrade --install hello-api chart/hello-api \
+	helm upgrade --install $(APP) chart/$(APP) \
 		--wait --timeout 120s \
 		--kube-context kind-$(KIND_CLUSTER) \
 		-n $(ENV) --create-namespace \
-		-f chart/hello-api/values-kind.yaml \
-		-f chart/hello-api/values-$(ENV).yaml \
+		-f chart/$(APP)/values-kind.yaml \
+		-f chart/$(APP)/values-$(ENV).yaml \
 		--set image.tag=$(TAG) \
 		--set apiKey=$(API_KEY)
 
 helm-check: ## helm lint and use kubeconform on helm templates
-	helm lint chart/hello-api --set apiKey=$(API_KEY)
-	helm template hello-api -n $(ENV) chart/hello-api \
-	-f chart/hello-api/values-kind.yaml \
-	-f chart/hello-api/values-$(ENV).yaml \
+	helm lint chart/$(APP) --set apiKey=$(API_KEY)
+	helm template $(APP) -n $(ENV) chart/$(APP) \
+	-f chart/$(APP)/values-kind.yaml \
+	-f chart/$(APP)/values-$(ENV).yaml \
 	--set apiKey=test123 \
 	| kubeconform -strict -summary \
 		-schema-location default \
@@ -109,9 +111,9 @@ helm-check: ## helm lint and use kubeconform on helm templates
 		-
 
 smoke-gateway: ## curl through the Gateway: make smoke-gateway ENV=dev
-	$(KUBECTL) wait httproute/hello-api -n $(ENV) --timeout=60s \
+	$(KUBECTL) wait httproute/$(APP) -n $(ENV) --timeout=60s \
 		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
-	$(KUBECTL) wait httproute/hello-api -n $(ENV) --timeout=60s \
+	$(KUBECTL) wait httproute/$(APP) -n $(ENV) --timeout=60s \
 		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}'=True
 	curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors \
-		-H "Host: $(ENV).hello.localhost" http://localhost/healthz
+		-H "Host: $(ENV).localhost" http://localhost/healthz
