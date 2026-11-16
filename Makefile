@@ -48,9 +48,13 @@ run: ## run docker locally
 	docker run --rm -p 8000:8000 $(IMAGE):$(TAG)
 
 smoke-image: build ## run the image and hit /healthz
-	docker run -d --rm --name smoke -p 8000:8000 $(IMAGE):$(TAG)
-	sleep 3
-	curl -fsS localhost:8000/healthz; status=$$?; docker stop smoke; exit $$status
+	-docker rm -f smoke >/dev/null 2>&1
+	docker run -d --name smoke -p 8000:8000 $(IMAGE):$(TAG)
+	curl -fsS --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors localhost:8000/healthz; \
+	status=$$?; \
+	if [ $$status -ne 0 ]; then echo "--- container logs ---"; docker logs smoke; fi; \
+	docker rm -f smoke >/dev/null; \
+	exit $$status
 
 ci: lint test build
 
