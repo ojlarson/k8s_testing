@@ -20,7 +20,9 @@ _con = get_con()
 
 @app.get("/")
 async def root():
-    return {"message": f"Hello World from {app_env}"}
+    return {"description": "Cardinal Direction Finder for Alaska Communities",
+            "pod_name": kube_pod_name,
+            "app_env": app_env}
 
 
 # For kubernetes
