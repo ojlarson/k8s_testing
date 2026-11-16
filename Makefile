@@ -32,6 +32,7 @@ $(VENV)/.installed: requirements.txt requirements-dev.txt
 venv: $(VENV)/.installed ## create .venv and install dependencies
 
 lint: venv ## lint code with ruff
+	$(PY) -m ruff format .
 	$(PY) -m ruff check .
 
 test: venv ## run the test suite
