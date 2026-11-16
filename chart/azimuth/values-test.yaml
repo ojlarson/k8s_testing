@@ -1,5 +1,5 @@
 # values-test.yaml
 appEnv: test
 route:
-  hostname: test.hello.localhost
+  hostname: test.localhost
 replicaCount: 1

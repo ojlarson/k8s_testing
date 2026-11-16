@@ -9,9 +9,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ ./app/
+RUN python app/ak_pts_to_parquet.py
 
 RUN useradd --create-home appuser
 USER appuser
+RUN python -c "import duckdb; duckdb.connect().execute('INSTALL spatial;')"
+
 
 EXPOSE 8080
 

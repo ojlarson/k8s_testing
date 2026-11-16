@@ -1,3 +1,0 @@
-appEnv: dev
-route:
-  hostname: dev.hello.localhost

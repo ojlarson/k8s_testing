@@ -1,12 +1,14 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
+APP := azimuth
+
 VENV := .venv
 PY := $(VENV)/bin/python
-IMAGE := hello-api
+IMAGE := azimuth
 TAG := $(shell git rev-parse --short HEAD)
 
-KIND_CLUSTER := hello
+KIND_CLUSTER := azimuth
 KIND_CONFIG := kind/kind_config.yaml
 
 KUBECTL := kubectl --context kind-$(KIND_CLUSTER)
@@ -18,7 +20,7 @@ NGF_NAMESPACE := nginx-gateway
 API_KEY ?= fake-local-key
 ENV ?= test
 
-.PHONY: help venv lint test build run smoke ci kubeconform
+.PHONY: help venv lint test build run smoke ci kind-up kind-down gateway-install helm-deploy smoke-kind helm-check show-tag
 
 help: ## Display this help message
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "  %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -32,6 +34,7 @@ $(VENV)/.installed: requirements.txt requirements-dev.txt
 venv: $(VENV)/.installed ## create .venv and install dependencies
 
 lint: venv ## lint code with ruff
+	$(PY) -m ruff format .
 	$(PY) -m ruff check .
 
 test: venv ## run the test suite
@@ -46,10 +49,14 @@ build: ## build the docker image tagged with the git SHA
 run: ## run docker locally
 	docker run --rm -p 8000:8000 $(IMAGE):$(TAG)
 
-smoke: build ## run the image and hit /healthz
-	docker run -d --rm --name smoke -p 8000:8000 $(IMAGE):$(TAG)
-	sleep 3
-	curl -fsS localhost:8000/healthz; status=$$?; docker stop smoke; exit $$status
+smoke-image: build ## run the image and hit /healthz
+	-docker rm -f smoke >/dev/null 2>&1
+	docker run -d --name smoke -p 8000:8000 $(IMAGE):$(TAG)
+	curl -fsS --retry 15 --retry-delay 2 --retry-connrefused --retry-all-errors localhost:8000/healthz; \
+	status=$$?; \
+	if [ $$status -ne 0 ]; then echo "--- container logs ---"; docker logs smoke; fi; \
+	docker rm -f smoke >/dev/null; \
+	exit $$status
 
 ci: lint test build
 
@@ -57,7 +64,7 @@ kind-up: ## create the kind cluster if it doesn't exist
 	@if kind get clusters | grep -qx "$(KIND_CLUSTER)"; then \
 		echo "kind cluster '$(KIND_CLUSTER)' already exists"; \
 	else \
-		kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 30s; \
+		kind create cluster --name $(KIND_CLUSTER) --config $(KIND_CONFIG) --wait 60s; \
 	fi
 
 kind-down: ## delete kind cluster
@@ -77,25 +84,38 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 	kubectl apply -f gateway/gateway.yaml
 	$(KUBECTL) wait --for=condition=Programmed gateway/gateway --timeout=60s
 
-smoke-kind: ## run helm tests against the kind release
-	helm test hello-api -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
 
 helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
-	helm upgrade --install hello-api chart/hello-api \
+	helm upgrade --install $(APP) chart/$(APP) \
+		--wait --timeout 120s \
 		--kube-context kind-$(KIND_CLUSTER) \
 		-n $(ENV) --create-namespace \
-		-f chart/hello-api/values-kind.yaml \
-		-f chart/hello-api/values-$(ENV).yaml \
+		-f chart/$(APP)/values-kind.yaml \
+		-f chart/$(APP)/values-$(ENV).yaml \
 		--set image.tag=$(TAG) \
 		--set apiKey=$(API_KEY)
 
-helm-check: ## use kubeconform on helm templates
-	helm template hello-api -n $(ENV) chart/hello-api \
-	-f chart/hello-api/values-kind.yaml \
-	-f chart/hello-api/values-$(ENV).yaml \
+helm-check: ## helm lint and use kubeconform on helm templates
+	helm lint chart/$(APP) --set apiKey=$(API_KEY)
+	helm template $(APP) -n $(ENV) chart/$(APP) \
+	-f chart/$(APP)/values-kind.yaml \
+	-f chart/$(APP)/values-$(ENV).yaml \
 	--set apiKey=test123 \
 	| kubeconform -strict -summary \
 		-schema-location default \
 		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
 		-
+
+
+smoke-helm: ## run helm tests against the kind release
+	helm test $(APP) -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
+
+smoke-gateway: ## curl through the Gateway: make smoke-gateway ENV=dev
+	$(KUBECTL) wait --for=condition=available deployment/gateway-nginx -n default --timeout=120s
+	$(KUBECTL) wait httproute/$(APP) -n $(ENV) --timeout=60s \
+		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
+	$(KUBECTL) wait httproute/$(APP) -n $(ENV) --timeout=60s \
+		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="ResolvedRefs")].status}'=True
+	curl -fsS --retry 10 --retry-delay 3 --retry-connrefused --retry-all-errors \
+		-H "Host: $(ENV).localhost" http://localhost/healthz

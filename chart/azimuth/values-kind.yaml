@@ -1,5 +1,5 @@
 image:
-  repository: hello-api
+  repository: azimuth
   pullPolicy: IfNotPresent
 
 appEnv: local
@@ -7,7 +7,7 @@ appEnv: local
 replicaCount: 2
 
 route:
-  hostname: hello.localhost
+  hostname: localhost
   gatewayName: gateway
 
 gateway:

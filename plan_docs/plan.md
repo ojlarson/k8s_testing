@@ -217,7 +217,7 @@ hello-platform/
 **CI added (high value):**
 
 - [ ] `helm lint` and `helm template` for every values file.
-- [ ] A job that spins up kind, builds and loads the image, installs the chart, runs `helm test`, and curls `/healthz`. This proves in CI what you did by hand in Phases 2–4.
+- [x] A job that spins up kind, builds and loads the image, installs the chart, runs `helm test`, and curls `/healthz`. This proves in CI what you did by hand in Phases 2–4.
 
 ## Phase 5a: CDK basics with ECR and GitHub OIDC (1–2 evenings)
 

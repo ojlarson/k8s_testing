@@ -1,3 +1,6 @@
 fastapi==0.162.0
 pip==26.2.2
 uvicorn==0.54.0
+geopandas==1.2.0
+pyarrow==26.0.1
+duckdb==2.0.0
