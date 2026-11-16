@@ -80,7 +80,7 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 
 smoke-kind: ## run helm tests against the kind release
 	helm test hello-api -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
-	curl -s -H "Host: $(ENV).hello.localhost" http://localhost/
+	curl -s -H "Host: $(ENV).hello.localhost" http://localhost/healthz
 
 helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
