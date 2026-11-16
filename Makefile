@@ -84,9 +84,6 @@ gateway-install: kind-up ## install Gateway API CRDs + NGF
 	kubectl apply -f gateway/gateway.yaml
 	$(KUBECTL) wait --for=condition=Programmed gateway/gateway --timeout=60s
 
-smoke-kind: ## run helm tests against the kind release
-	helm test $(APP) -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
-	curl -s -H "Host: $(ENV).localhost" http://localhost/healthz
 
 helm-deploy: gateway-install build ## deploy into kind: make helm-deploy ENV=dev
 	kind load docker-image $(IMAGE):$(TAG) --name $(KIND_CLUSTER)
@@ -110,7 +107,12 @@ helm-check: ## helm lint and use kubeconform on helm templates
 		-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' \
 		-
 
+
+smoke-helm: ## run helm tests against the kind release
+	helm test $(APP) -n $(ENV) --kube-context kind-$(KIND_CLUSTER) --logs
+
 smoke-gateway: ## curl through the Gateway: make smoke-gateway ENV=dev
+	$(KUBECTL) wait --for=condition=available deployment/gateway-nginx -n default --timeout=120s
 	$(KUBECTL) wait httproute/$(APP) -n $(ENV) --timeout=60s \
 		--for=jsonpath='{.status.parents[0].conditions[?(@.type=="Accepted")].status}'=True
 	$(KUBECTL) wait httproute/$(APP) -n $(ENV) --timeout=60s \

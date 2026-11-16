@@ -29,7 +29,7 @@ jobs:
         run: make helm-deploy
 
       - name: validate cluster
-        run: make smoke-kind
+        run: make smoke-helm
       
       - name: Validate Gateway
         run: make smoke-gateway
